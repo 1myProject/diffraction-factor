@@ -75,8 +75,8 @@ impl Difr {
 
                     let (c, s) = fresnl(u);
 
-                    let re = 2.*c;
-                    let im = 2.*s;
+                    let re = 2. * c;
+                    let im = 2. * s;
                     let abs = re.hypot(im);
                     let phi = im.atan2(re);
                     (u, abs, phi)
@@ -102,10 +102,11 @@ impl Difr {
     pub fn get_fresnel_zones(&self, is_circle: bool) -> Vec<f32> {
         let b = self.b();
 
-        let max_wave = match self.rezhim {
-            Screens::One => MAX_X * std::f32::consts::SQRT_2,
-            Screens::Two => (self.x_otv * self.x_otv * 0.25 + MAX_X * MAX_X).sqrt(),
-        };
+        // let max_wave = match self.rezhim {
+        //     Screens::One => MAX_X * std::f32::consts::SQRT_2,
+        //     Screens::Two => (self.x_otv * self.x_otv * 0.25 + MAX_X * MAX_X).sqrt(),
+        // };
+        let max_wave = MAX_X * std::f32::consts::SQRT_2;
 
         let last_n = 2 * (MAX_X * MAX_X / b).round() as i32;
 
@@ -163,7 +164,7 @@ impl Difr {
 
     #[inline]
     pub fn get_current_points_3d(&self) -> ((f64, f64, f64), (f64, f64, f64)) {
-        let u = self.cur_u() / 2.;
+        let u = self.cur_u();
 
         let (c, s) = fresnl(u);
         ((u, c, s), (-u, -c, -s))
@@ -177,20 +178,30 @@ impl Difr {
 
     #[inline]
     pub fn get_point_norm(&self, u: f64) -> [f64; 2] {
-        let (c, s) = fresnl(u);
         match self.rezhim {
-            Screens::One => [u, (s + 0.5).hypot(c + 0.5) / SQRT_2],
-            Screens::Two => [u, (s * 2.).hypot(c * 2.) / SQRT_2],
+            Screens::One => {
+                let (c, s) = fresnl(u);
+                [u, (s + 0.5).hypot(c + 0.5) / SQRT_2]
+            }
+            Screens::Two => {
+                let (c, s) = fresnl(u);
+                [u, (s * 2.).hypot(c * 2.) / SQRT_2]
+            }
         }
     }
 
     #[inline]
     pub fn get_current_point_arg(&self) -> [f64; 2] {
         let u = self.cur_u();
-        let (c, s) = fresnl(u);
         match self.rezhim {
-            Screens::One => [u, (s + 0.5).atan2(c + 0.5)],
-            Screens::Two => [u, (s * 2.).atan2(c * 2.)],
+            Screens::One => {
+                let (c, s) = fresnl(u);
+                [u, (s + 0.5).atan2(c + 0.5)]
+            }
+            Screens::Two => {
+                let (c, s) = fresnl(u );
+                [u, (s * 2.).atan2(c * 2.)]
+            }
         }
     }
 

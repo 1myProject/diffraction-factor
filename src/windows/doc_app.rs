@@ -6,13 +6,17 @@ use egui::{Color32, DragValue, FontId, Hyperlink, RichText, Stroke, TextFormat, 
 use egui_plotter::EguiBackend;
 use fresnel::fresnl;
 use plotters::prelude::*;
+use plotters::prelude::full_palette::GREEN_900;
+use plotters::style::full_palette::ORANGE;
 
 const US: i32 = 40;
 
 pub struct DocApp {
-    x: f64,
+    x1: f64,
+    x2: f64,
 
-    u: f64,
+    u1: f64,
+    u2: f64,
 
     l1: f64,
     l2: f64,
@@ -24,7 +28,7 @@ pub struct DocApp {
 
 impl DocApp {
     #[inline]
-    fn draw_karnu(&mut self, ui: &Ui, u: f64) -> (f64, f64) {
+    fn draw_karnu(&mut self, ui: &Ui, u1: f64, u2: f64) -> [(f64, f64); 2] {
         let size = ui.available_height();
         let center = (size / 2.) as i32;
         let k_axis = center as f32 / 8.;
@@ -32,9 +36,11 @@ impl DocApp {
         let root = EguiBackend::new(ui).into_drawing_area();
 
         if ui.visuals().dark_mode {
-            root.fill(&crate::windows::main_app::BG_PLOT_COLOR_DARK).unwrap();
+            root.fill(&crate::windows::main_app::BG_PLOT_COLOR_DARK)
+                .unwrap();
         } else {
-            root.fill(&crate::windows::main_app::BG_PLOT_COLOR_LIGHT).unwrap();
+            root.fill(&crate::windows::main_app::BG_PLOT_COLOR_LIGHT)
+                .unwrap();
         }
 
         const AXIS: f64 = 0.8;
@@ -61,27 +67,27 @@ impl DocApp {
                         [(center - LEN_SHTR, p), (center + LEN_SHTR, p)],
                         &BLACK,
                     ))
-                        .unwrap();
+                    .unwrap();
 
                     root.draw_text(
                         format!("{}", i / 10.).as_str(),
                         &text_font,
                         (center + 7, p - 10),
                     )
-                        .unwrap();
+                    .unwrap();
 
                     root.draw(&PathElement::new(
                         [(p, center - LEN_SHTR), (p, center + LEN_SHTR)],
                         &BLACK,
                     ))
-                        .unwrap();
+                    .unwrap();
 
                     root.draw_text(
                         format!("{}", i / 10.).as_str(),
                         &text_font,
                         (p - 11, center + 4),
                     )
-                        .unwrap();
+                    .unwrap();
                 }
             }
             root.draw_text("0", &text_font, (center, center + 4))
@@ -91,12 +97,12 @@ impl DocApp {
                 [(center, 0), (center, 2 * center)],
                 &BLACK,
             ))
-                .unwrap();
+            .unwrap();
             root.draw(&PathElement::new(
                 [(0, center), (2 * center, center)],
                 &BLACK,
             ))
-                .unwrap();
+            .unwrap();
 
             root.draw_text("C", &text_font, (2 * center - 12, center - 22))
                 .unwrap();
@@ -105,7 +111,9 @@ impl DocApp {
             let cnt = center as f64;
             let k = cnt / 0.8;
             for i in -4..=4 {
-                if i == 0 { continue; }
+                if i == 0 {
+                    continue;
+                }
                 let u = i as f64 / 2.;
                 let (c, s) = fresnl(u);
 
@@ -119,8 +127,12 @@ impl DocApp {
                     .draw_series(std::iter::once(Circle::new((s, c), 3, BLACK.filled())))
                     .unwrap();
 
-                root.draw_text(&txt, &text_font, ((cnt + s * k) as i32, (cnt - c * k) as i32))
-                    .unwrap();
+                root.draw_text(
+                    &txt,
+                    &text_font,
+                    ((cnt + s * k) as i32, (cnt - c * k) as i32),
+                )
+                .unwrap();
             }
         }
 
@@ -135,7 +147,7 @@ impl DocApp {
             ))
             .unwrap();
 
-        let (s, c) = fresnl(u);
+        let (s, c) = fresnl(u1);
         chart
             .draw_series(LineSeries::new([(c, 0.0), (c, s)], &BLACK))
             .unwrap();
@@ -147,12 +159,38 @@ impl DocApp {
             .draw_series(LineSeries::new([(0.0, 0.0), (c, s)], &BLACK))
             .unwrap();
 
+
+        let p1 = (c, s);
+
+        let (s, c) = fresnl(u2);
+
         chart
-            .draw_series(std::iter::once(Circle::new((c, s), 3, RED.filled())))
+            .draw_series(LineSeries::new([(c, 0.0), (c, s)], &BLACK))
+            .unwrap();
+
+        chart
+            .draw_series(LineSeries::new([(0.0, s), (c, s)], &BLACK))
+            .unwrap();
+        chart
+            .draw_series(LineSeries::new([(0.0, 0.0), (c, s)], &BLACK))
+            .unwrap();
+
+        let p2 = (c, s);
+
+        chart
+            .draw_series(LineSeries::new([p1, p2], &GREEN_900))
+            .unwrap();
+
+
+        chart
+            .draw_series(std::iter::once(Circle::new(p1, 3, RED.filled())))
+            .unwrap();
+
+        chart
+            .draw_series(std::iter::once(Circle::new(p2, 3, ORANGE.filled())))
             .unwrap();
         root.present().unwrap();
-
-        (c, s)
+        [p1, p2]
     }
 
     #[inline]
@@ -160,8 +198,11 @@ impl DocApp {
         (2. * (self.l1 + self.l2) / (self.lambda * self.l1 * self.l2)).sqrt()
     }
 
+    #[inline]
     fn update_u(&mut self) {
-        self.u = self.x * self.k();
+        let k = self.k();
+        self.u1 = self.x1 * k;
+        self.u2 = self.x2 * k;
     }
 }
 
@@ -169,52 +210,92 @@ impl eframe::App for DocApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.with_layout(egui::Layout::left_to_right(Align::LEFT), |ui| {
-                let h = ui.available_height();
-                let size = Vec2::splat(h);
-                let inner_ui = &mut alloc_ui_block(ui, size);
-                let (c, s) = self.draw_karnu(inner_ui, self.u);
+                let points =
+                    ui.with_layout(egui::Layout::bottom_up(Align::LEFT), |ui| {
+                        ui.horizontal(|ui| {
+                            ui.label("l1");
+                            let r = ui.add(DragValue::new(&mut self.l1).suffix("см").speed(0.05));
+                            if r.changed() {
+                                self.update_u();
+                            }
+                            ui.label("l2:");
+                            let r = ui.add(DragValue::new(&mut self.l2).suffix("см").speed(0.05));
+                            if r.changed() {
+                                self.update_u();
+                            }
+
+                            ui.label("λ:");
+                            let r = ui.add(DragValue::new(&mut self.lambda).suffix("см").speed(0.05));
+                            if r.changed() {
+                                self.update_u();
+                            }
+                        });
+
+                        let h = ui.available_height();
+                        let size = Vec2::splat(h);
+                        let inner_ui = &mut alloc_ui_block(ui, size);
+                        self.draw_karnu(inner_ui, self.u1, self.u2)
+                    }).inner;
 
                 ui.vertical(|ui| {
                     {
                         ui.heading("В качестве аргумента, для U и X, так же можно вписать \"inf\" и \"-inf\"");
-                        let drg = DragValue::new(&mut self.x).suffix("см").speed(0.05);
-                        let ch = add_param(ui, "x: ", drg);
+                        let drg = DragValue::new(&mut self.x1).suffix("см").speed(0.05);
+                        let ch = add_param(ui, "x1: ", drg);
                         if ch {
                             self.update_u();
                         }
 
-                        let drg = DragValue::new(&mut self.l1).suffix("см").speed(0.05);
-                        let ch = add_param(ui, "l1:", drg);
+                        let drg = DragValue::new(&mut self.x2).suffix("см").speed(0.05);
+                        let ch = add_param(ui, "x2: ", drg);
                         if ch {
                             self.update_u();
                         }
 
-                        let drg = DragValue::new(&mut self.l2).suffix("см").speed(0.05);
-                        let ch = add_param(ui, "l2:", drg);
-                        if ch {
-                            self.update_u();
-                        }
+                        // let drg = DragValue::new(&mut self.l1).suffix("см").speed(0.05);
+                        // let ch = add_param(ui, "l1:", drg);
+                        // if ch {
+                        //     self.update_u();
+                        // }
+                        //
+                        // let drg = DragValue::new(&mut self.l2).suffix("см").speed(0.05);
+                        // let ch = add_param(ui, "l2:", drg);
+                        // if ch {
+                        //     self.update_u();
+                        // }
+                        //
+                        // let drg = DragValue::new(&mut self.lambda).suffix("см").speed(0.05);
+                        // let ch = add_param(ui, "λ: ", drg);
+                        // if ch {
+                        //     self.update_u();
+                        // }
 
-                        let drg = DragValue::new(&mut self.lambda).suffix("см").speed(0.05);
-                        let ch = add_param(ui, "λ: ", drg);
+                        let drg = DragValue::new(&mut self.u1).speed(0.05);
+                        let ch = add_param(ui, "u1:", drg);
                         if ch {
-                            self.update_u();
+                            self.x1 = self.u1 / self.k();
+                        }
+                        let drg = DragValue::new(&mut self.u2).speed(0.05);
+                        let ch = add_param(ui, "u2:", drg);
+                        if ch {
+                            self.x2 = self.u2 / self.k();
                         }
 
                         ui.separator();
 
-                        let drg = DragValue::new(&mut self.u).speed(0.05);
-                        let ch = add_param(ui, "u:", drg);
-                        if ch {
-                            self.x = self.u / self.k();
+                        for (i, (c, s)) in points.iter().enumerate() {
+                            let plus = if *s < 0. {
+                                ""
+                            } else {
+                                "+"
+                            };
+                            ui.heading(
+                                format!("C+Sj={c:.03}{plus}{s:.03}j\t|F{}|={:.3}", i, c.hypot(*s))
+                            );
                         }
-
-                        let txt = if s < 0. {
-                            format!("C+Sj={c:.03}{s:.03}j")
-                        } else {
-                            format!("C+Sj={c:.03}+{s:.03}j")
-                        };
-                        ui.heading(txt);
+                        let c = (points[0].0 - points[1].0).abs();
+                        let s = (points[0].1 - points[1].1).abs();
+                        ui.heading(format!("|F|={:.3}", c.hypot(s)));
 
                         #[cfg(debug_assertions)]
                         {
@@ -225,65 +306,67 @@ impl eframe::App for DocApp {
 
                     ui.separator();
 
-                    ui.horizontal_wrapped(|ui| {
-                        let mut job = LayoutJob::default();
+                    egui::ScrollArea::both().show(ui, |ui| {
+                        ui.horizontal_wrapped(|ui| {
+                            let mut job = LayoutJob::default();
 
-                        let (default_color, strong_color) = if ui.visuals().dark_mode {
-                            (Color32::LIGHT_GRAY, Color32::WHITE)
-                        } else {
-                            (Color32::DARK_GRAY, Color32::BLACK)
-                        };
+                            let (default_color, strong_color) = if ui.visuals().dark_mode {
+                                (Color32::DARK_GRAY, Color32::WHITE)
+                            } else {
+                                (Color32::DARK_GRAY, Color32::BLACK)
+                            };
 
-                        const TEXT_SIZE: f32 = 16.0;
-                        // let TEXT_SIZE: f32 = self.p as f32;
+                            const TEXT_SIZE: f32 = 16.0;
+                            // let TEXT_SIZE: f32 = self.p as f32;
 
-                        job.append(
-                            "\tДля построениия дифракционного множителя необходимо посчитать разность двух",
-                            10.,
-                            TextFormat {
-                                color: default_color,
-                                font_id: FontId::proportional(TEXT_SIZE),
-                                ..Default::default()
-                            },
-                        );
-                        ui.label(job);
+                            job.append(
+                                "\tДля построениия дифракционного множителя необходимо посчитать разность двух",
+                                10.,
+                                TextFormat {
+                                    color: default_color,
+                                    font_id: FontId::proportional(TEXT_SIZE),
+                                    ..Default::default()
+                                },
+                            );
+                            ui.label(job);
 
-                        let h = Hyperlink::from_label_and_url(
-                            RichText::new("интеграллов Френеля").size(TEXT_SIZE),
-                            "https://ru.wikipedia.org/wiki/%D0%98%D0%BD%D1%82%D0%B5%D0%B3%D1%80%D0%B0%D0%BB%D1%8B_%D0%A4%D1%80%D0%B5%D0%BD%D0%B5%D0%BB%D1%8F"
-                        );
-                        ui.add(h).on_hover_text("Wikipedia");
+                            let h = Hyperlink::from_label_and_url(
+                                RichText::new("интеграллов Френеля").size(TEXT_SIZE),
+                                "https://ru.wikipedia.org/wiki/%D0%98%D0%BD%D1%82%D0%B5%D0%B3%D1%80%D0%B0%D0%BB%D1%8B_%D0%A4%D1%80%D0%B5%D0%BD%D0%B5%D0%BB%D1%8F",
+                            );
+                            ui.add(h).on_hover_text("Wikipedia");
 
-                        let mut job = LayoutJob::default();
-                        job.append(
-                            "S(u) и C(u) (интеграллы по синусу и косинусу соответственно). Для их нахождения используется",
-                            10.,
-                            TextFormat {
-                                color: default_color,
-                                font_id: FontId::proportional(TEXT_SIZE),
-                                ..Default::default()
-                            },
-                        );
-                        job.append(
-                            "спираль Корню",
-                            10.,
-                            TextFormat {
-                                color: default_color,
-                                font_id: FontId::proportional(TEXT_SIZE),
-                                underline: Stroke::new(1.0, strong_color),
-                                ..Default::default()
-                            },
-                        );
-                        job.append(
-                            ".\n\tСпираль имеет свои координаты u, от 0 (где и начало всех координат) до ±∞ (где стираль закручивается). Подставляя свою u на спираль мы ставим точку на этой спирали и получаем точку, расположенную в плоскости с осями S и C. После чего визуально (линейкой) ищем какому S и какому C соответствует наша точка u. Её координаты есть S и C.",
-                            10.,
-                            TextFormat {
-                                color: default_color,
-                                font_id: FontId::proportional(TEXT_SIZE),
-                                ..Default::default()
-                            },
-                        );
-                        ui.label(job);
+                            let mut job = LayoutJob::default();
+                            job.append(
+                                "S(u) и C(u) (интеграллы по синусу и косинусу соответственно). Для их нахождения используется",
+                                10.,
+                                TextFormat {
+                                    color: default_color,
+                                    font_id: FontId::proportional(TEXT_SIZE),
+                                    ..Default::default()
+                                },
+                            );
+                            job.append(
+                                "спираль Корню.",
+                                10.,
+                                TextFormat {
+                                    color: default_color,
+                                    font_id: FontId::proportional(TEXT_SIZE),
+                                    underline: Stroke::new(1.0, strong_color),
+                                    ..Default::default()
+                                },
+                            );
+                            job.append(
+                                "\n\tСпираль имеет свои координаты u, от 0 (где и начало всех координат) до ±∞ (где стираль закручивается). Подставляя свою u на спираль мы ставим точку на этой спирали и получаем точку, расположенную в плоскости с осями S и C. После чего визуально (линейкой) ищем какому S и какому C соответствует наша точка u. Её координаты есть S и C.",
+                                10.,
+                                TextFormat {
+                                    color: default_color,
+                                    font_id: FontId::proportional(TEXT_SIZE),
+                                    ..Default::default()
+                                },
+                            );
+                            ui.label(job);
+                        });
                     });
                 });
             })
@@ -294,8 +377,10 @@ impl eframe::App for DocApp {
 impl Default for DocApp {
     fn default() -> Self {
         Self {
-            x: 0.,
-            u: 0.,
+            x1: 0.,
+            x2: 0.,
+            u1: 0.,
+            u2: 0.,
             l1: 30.,
             l2: 30.,
             lambda: 3.,

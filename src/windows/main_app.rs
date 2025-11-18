@@ -1,5 +1,8 @@
-use crate::wrap_app::alloc_ui_block;
+use crate::windows::math::calc::converter_freq;
+use crate::windows::math::chart::ChartParams;
+use crate::windows::math::difr::{Difr, Screens, MAX_X};
 use crate::windows::settings::{COLS, OFFEST_X, OFFEST_Y, ROWS};
+use crate::wrap_app::alloc_ui_block;
 use egui::{Button, Color32, DragValue, Event, Image, Pos2, Rect, Ui, Vec2};
 use egui_plot::{AxisHints, GridInput, GridMark, Line, MarkerShape, Plot, PlotPoint, Points};
 use egui_plotter::EguiBackend;
@@ -8,9 +11,6 @@ use plotters::style::full_palette::GREY_500;
 use std::default::Default;
 use std::f32::consts::{FRAC_PI_2, FRAC_PI_4, PI, SQRT_2};
 use std::ops::RangeInclusive;
-use crate::windows::math::calc::converter_freq;
-use crate::windows::math::chart::ChartParams;
-use crate::windows::math::difr::{Difr, Screens, MAX_X};
 
 const MOVE_SCALE: f32 = 0.01;
 pub(crate) const BG_PLOT_COLOR_DARK: RGBColor = GREY_500;
@@ -57,7 +57,7 @@ impl MainApp {
 
         let step = ((max - min) / 7. * preselect).ceil();
 
-        let min = (min * preselect).floor() as i32+1;
+        let min = (min * preselect).floor() as i32 + 1;
         let max = (max * preselect).ceil() as i32;
         for i in min..max {
             let step_size = if i % step as i32 == 0 {
@@ -230,6 +230,7 @@ impl MainApp {
                 .unwrap();
             }
 
+            //setting axis
             const ZR: f64 = 10.;
             let st = if let Some(r) = line.first() {
                 (r.0 * ZR).floor() / ZR
@@ -238,9 +239,8 @@ impl MainApp {
             };
             let end = (line.last().unwrap().0 * ZR).ceil() / ZR;
 
-
-            let step = (end-st).round()/6.;
-            let step = (step*100.).round()/100.;
+            let step = (end - st).round() / 6.;
+            let step = (step * 100.).round() / 100.;
             let x_axis = (st..end).step(step);
             let zy_axis = (-1.0..1.0).step(0.1);
 
@@ -248,6 +248,7 @@ impl MainApp {
                 .build_cartesian_3d(x_axis, zy_axis.clone(), zy_axis)
                 .unwrap();
 
+            //setting angil of view
             chart.with_projection(|mut pb| {
                 pb.yaw = chpr.yaw as f64;
                 pb.scale = 0.75;
@@ -295,7 +296,7 @@ impl MainApp {
                 .unwrap();
 
             {
-                const POINT_PPROJECTION_SIZE: i32 = 3;
+                const POINT_PROJECTION_SIZE: i32 = 3;
 
                 let mut phi = (chpr.yaw) % (2. * PI);
                 if phi < 0. {
@@ -332,7 +333,7 @@ impl MainApp {
 
                     chart
                         .draw_series(points.iter().map(|&(_, y, z)| {
-                            Circle::new((p, y, z), POINT_PPROJECTION_SIZE, COLOR_RED_POINT.filled())
+                            Circle::new((p, y, z), POINT_PROJECTION_SIZE, COLOR_RED_POINT.filled())
                         }))
                         .unwrap();
                 }
@@ -356,7 +357,7 @@ impl MainApp {
 
                     chart
                         .draw_series(points.iter().map(|&(x, _, z)| {
-                            Circle::new((x, p, z), POINT_PPROJECTION_SIZE, COLOR_RED_POINT.filled())
+                            Circle::new((x, p, z), POINT_PROJECTION_SIZE, COLOR_RED_POINT.filled())
                         }))
                         .unwrap();
                 }
@@ -381,7 +382,7 @@ impl MainApp {
 
                     chart
                         .draw_series(points.iter().map(|&(x, y, _)| {
-                            Circle::new((x, y, p), POINT_PPROJECTION_SIZE, COLOR_RED_POINT.filled())
+                            Circle::new((x, y, p), POINT_PROJECTION_SIZE, COLOR_RED_POINT.filled())
                         }))
                         .unwrap();
                 }
@@ -442,13 +443,20 @@ impl MainApp {
                 }
             });
 
-            //len of opening
-            let start = fz.get_start();
-            let drag = DragValue::new(&mut fz.x_otv)
-                .range(start..=MAX_X)
-                .suffix("см")
-                .speed(0.1);
-            add_param(ui, "ширина отверстия:", drag);
+            //len from center to screen
+            ui.horizontal(|ui| {
+                let start = fz.get_start();
+
+                ui.label("x:")
+                    .on_hover_text("расстояние от центра окна до кромки экрана");
+                ui.add(
+                    DragValue::new(&mut fz.x_otv)
+                        .range(start..=MAX_X)
+                        .suffix("см")
+                        .speed(0.1),
+                )
+                    .on_hover_text("расстояние от центра окна до кромки экрана");
+            });
 
             // frequency/len of vawe
             ui.horizontal(|ui| {
@@ -580,7 +588,7 @@ impl MainApp {
                 }
             }
             Screens::Two => {
-                let p1 = self.fz.x_otv / 2. * root_k;
+                let p1 = self.fz.x_otv * root_k;
                 let p2 = (center + root_k * (MAX_X + 1.)) as i32;
 
                 let x2 = center - p1;
@@ -624,9 +632,11 @@ impl MainApp {
 
         let x_axis = vec![
             AxisHints::new_x().label("u"),
-            AxisHints::new_x().label("x").formatter(x_formatter).placement(egui_plot::VPlacement::Top),
+            AxisHints::new_x()
+                .label("x")
+                .formatter(x_formatter)
+                .placement(egui_plot::VPlacement::Top),
         ];
-
 
         let sz = ui.available_size();
         let x = match stud_points {
@@ -640,10 +650,10 @@ impl MainApp {
                 position.y -= OFFEST_Y;
                 position.x -= OFFEST_X;
                 if !rect.contains(position) {
-                    return None
+                    return None;
                 }
-            }else {
-                return None
+            } else {
+                return None;
             }
             // if !response.hovered() {
             //     return None;
@@ -725,11 +735,10 @@ impl MainApp {
     fn table_ui(&mut self, ui: &mut Ui) {
         use egui_extras::{Column, TableBuilder};
         ui.vertical(|ui| {
-
-            let drag = DragValue::new(self.fz.get_max_i())
-                .suffix("мА")
-                .speed(0.1);
+            let drag = DragValue::new(self.fz.get_max_i()).suffix("мА").speed(0.1);
             add_param(ui, "I без экранов:", drag);
+
+            ui.separator();
 
             let available_height = ui.available_height();
             let mut table = TableBuilder::new(ui)
@@ -847,8 +856,7 @@ impl eframe::App for MainApp {
                     });
                     // draw |F|(u), phi(u)
                     ui.with_layout(egui::Layout::left_to_right(egui::Align::LEFT), |ui| {
-
-                        let size = Vec2::new(available.x * 4. / COLS, available.y*2./ROWS);
+                        let size = Vec2::new(available.x * 4. / COLS, available.y * 2. / ROWS);
 
                         // draw |F|(u)
                         let inner_ui = &mut alloc_ui_block(ui, size);

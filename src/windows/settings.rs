@@ -23,28 +23,68 @@ impl SizeType {
     }
 }
 
+#[derive(Default, PartialEq)]
+enum ScaleType{
+    #[default]
+    S1,
+    S2,
+    S3,
+    S4
+}
+
+impl ScaleType {
+    pub fn get_dpi(&self) -> f32 {
+        match self {
+            ScaleType::S1 => 1.,
+            ScaleType::S2 => 1.2,
+            ScaleType::S3 => 1.4,
+            ScaleType::S4 => 1.6,
+        }
+    }
+}
 #[derive(Default)]
 pub struct SettingsApp {
     size_type: SizeType,
+    scale_type: ScaleType,
+
+    lock: bool
 }
 
 impl eframe::App for SettingsApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.heading("настройка размера окна для экрана:");
-            ui.selectable_value(&mut self.size_type, SizeType::H800, "800px");
-            ui.selectable_value(&mut self.size_type, SizeType::H1080, "1080px");
-            ui.selectable_value(&mut self.size_type, SizeType::H1200, "1200px");
-            ui.selectable_value(&mut self.size_type, SizeType::H1440, "1440px");
-            ui.selectable_value(&mut self.size_type, SizeType::H1600, "1600px");
+            ui.horizontal(|ui| {
+                ui.vertical(|ui| {
+                    ui.heading("настройка размера окна для экрана:");
+                    ui.selectable_value(&mut self.size_type, SizeType::H800, "800px");
+                    ui.selectable_value(&mut self.size_type, SizeType::H1080, "1080px");
+                    ui.selectable_value(&mut self.size_type, SizeType::H1200, "1200px");
+                    ui.selectable_value(&mut self.size_type, SizeType::H1440, "1440px");
+                    ui.selectable_value(&mut self.size_type, SizeType::H1600, "1600px");
+                });
+                ui.separator();
+                ui.vertical(|ui| {
+                    ui.heading("настройка маштаба:");
+                    ui.selectable_value(&mut self.scale_type, ScaleType::S1, "100%");
+                    ui.selectable_value(&mut self.scale_type, ScaleType::S2, "120%");
+                    ui.selectable_value(&mut self.scale_type, ScaleType::S3, "140%");
+                    ui.selectable_value(&mut self.scale_type, ScaleType::S4, "160%");
+                })
+            });
 
-            let y = self.size_type.get_hight();
+            let sc = self.scale_type.get_dpi();
+
+            // print!("\r{}", ctx.pixels_per_point());
+            ctx.set_pixels_per_point(sc);
+
+            let y = self.size_type.get_hight()/sc;
 
             ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(compute_window_size(y)));
-
             // info block
             ui.separator();
             ui.heading("Информация");
+
+            ui.label("программа написана на Rust в 2025г, под руководством доцента кафедры ИРТ Карильчука В.Б.");
 
             ui.horizontal(|ui| {
                 ui.label("Счетовод:");
@@ -62,11 +102,9 @@ impl eframe::App for SettingsApp {
             });
 
             ui.add_space(12.0);
-
-            ui.label("программа написана на Rust в 2025г");
             ui.hyperlink_to(
                 format!("{GITHUB}Исходный код"),
-                "https://github.com/1myProject/Huygens-Fresnel-egui-plot",
+                "https://github.com/1myProject/diffraction-factor",
             );
 
         });
