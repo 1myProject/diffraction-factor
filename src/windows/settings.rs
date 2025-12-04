@@ -84,21 +84,24 @@ impl eframe::App for SettingsApp {
             ui.separator();
             ui.heading("Информация");
 
-            ui.label("программа написана на Rust в 2025г, под руководством доцента кафедры ИРТ Карильчука В.Б.");
+            ui.label("программа написана на Rust в 2025г, под руководством доцента кафедры ИРТ Кирильчука В.Б.");
 
             ui.horizontal(|ui| {
-                ui.label("Счетовод:");
+                ui.label("Счетовод: Мурин В.Д. ");
                 ui.hyperlink_to(
                     format!("{GITHUB}MorinoSenshi"),
                     "https://github.com/1myProject",
                 );
             });
             ui.horizontal(|ui| {
-                ui.label("Продакшн: ");
+                ui.label("Продакшн: Прокопчик Д.В. ");
                 ui.hyperlink_to(
                     format!("{GITHUB}Prokoptonator"),
                     "https://github.com/Prokoptonator",
                 );
+            });
+            ui.horizontal(|ui| {
+                ui.label("Ученый: Жуковский П.Н.");
             });
 
             ui.add_space(12.0);
