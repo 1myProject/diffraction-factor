@@ -242,10 +242,11 @@ impl MainApp {
             let step = (end - st).round() / 6.;
             let step = (step * 100.).round() / 100.;
             let x_axis = (st..end).step(step);
-            let zy_axis = (-1.0..1.0).step(0.1);
+            let y_axis = (-1.0..1.0).step(0.1);
+            let z_axis = (1.0..-1.0).step(-0.1);
 
             let mut chart = ChartBuilder::on(&root)
-                .build_cartesian_3d(x_axis, zy_axis.clone(), zy_axis)
+                .build_cartesian_3d(x_axis, y_axis, z_axis)
                 .unwrap();
 
             //setting angil of view
@@ -364,7 +365,7 @@ impl MainApp {
 
                 let phi = phi - FRAC_PI_2;
                 if phi != 0. && phi != 3.14 {
-                    let p = if phi > 0. && phi < PI { 1. } else { -1. };
+                    let p = - if phi > 0. && phi < PI { 1. } else { -1. };
 
                     let l = line.iter().map(|&(x, y, _)| (x, y, p));
                     chart
