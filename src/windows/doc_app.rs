@@ -11,6 +11,8 @@ use plotters::style::full_palette::ORANGE;
 
 const US: i32 = 40;
 
+// TODO: добавить ДН
+// TODO: добавить магнит для фиксации экранов
 pub struct DocApp {
     x1: f64,
     x2: f64,
@@ -24,10 +26,11 @@ pub struct DocApp {
 
     #[cfg(debug_assertions)]
     p: i32,
+
+    dn: bool,
 }
 
 impl DocApp {
-    #[inline]
     fn draw_karnu(&mut self, ui: &Ui, u1: f64, u2: f64) -> [(f64, f64); 2] {
         let size = ui.available_height();
         let center = (size / 2.) as i32;
@@ -192,6 +195,136 @@ impl DocApp {
         root.present().unwrap();
         [p1, p2]
     }
+    fn draw_dn(&mut self, ui: &Ui, u1: f64, u2: f64) -> [(f64, f64); 2] {
+        let size = ui.available_height();
+        let center = (size / 2.) as i32;
+        let k_axis = center as f32 / 8.;
+
+        let root = EguiBackend::new(ui).into_drawing_area();
+
+        if ui.visuals().dark_mode {
+            root.fill(&crate::windows::main_app::BG_PLOT_COLOR_DARK)
+                .unwrap();
+        } else {
+            root.fill(&crate::windows::main_app::BG_PLOT_COLOR_LIGHT)
+                .unwrap();
+        }
+
+        const AXIS: f64 = 1.3;
+        let axis = (-AXIS..AXIS).step(1.);
+        let mut chart = ChartBuilder::on(&root)
+            .build_cartesian_2d(axis.clone(), axis)
+            .unwrap();
+
+
+        // draw axis
+        {
+            let text_font = TextStyle::from(("sans-serif", 16).into_font());
+            // for i in (-7..=7).map(|x| x as f32) {
+            //     if i != 0. {
+            //         let p = center + (k_axis * i).round() as i32;
+            //         root.draw(&PathElement::new(
+            //             [(center - LEN_SHTR, p), (center + LEN_SHTR, p)],
+            //             &BLACK,
+            //         ))
+            //         .unwrap();
+            //
+            //         root.draw_text(
+            //             format!("{}", i / 10.).as_str(),
+            //             &text_font,
+            //             (center + 7, p - 10),
+            //         )
+            //         .unwrap();
+            //
+            //         root.draw(&PathElement::new(
+            //             [(p, center - LEN_SHTR), (p, center + LEN_SHTR)],
+            //             &BLACK,
+            //         ))
+            //         .unwrap();
+            //
+            //         root.draw_text(
+            //             format!("{}", i / 10.).as_str(),
+            //             &text_font,
+            //             (p - 11, center + 4),
+            //         )
+            //         .unwrap();
+            //     }
+            // }
+            // root.draw_text("0", &text_font, (center, center + 4))
+            //     .unwrap();
+
+            root.draw(&PathElement::new(
+                [(center, 0), (center, 2 * center)],
+                &BLACK,
+            ))
+            .unwrap();
+            root.draw(&PathElement::new(
+                [(0, center), (2 * center, center)],
+                &BLACK,
+            ))
+            .unwrap();
+
+            root.draw_text("0", &text_font, (center + 4, 0)).unwrap();
+            root.draw_text("90", &text_font, (2 * center - 20, center+2)).unwrap();
+            root.draw_text("-90", &text_font, (2, center+2)).unwrap();
+
+            // let cnt = center as f64;
+            // let k = cnt / 0.8;
+            // for i in -4..=4 {
+            //     if i == 0 {
+            //         continue;
+            //     }
+            //     let u = i as f64 / 2.;
+            //     let (c, s) = fresnl(u);
+            //
+            //     let txt = if u % 1. == 0. {
+            //         format!("{u:.0}")
+            //     } else {
+            //         format!("{u:.2}")
+            //     };
+            //
+            //     chart
+            //         .draw_series(std::iter::once(Circle::new((s, c), 3, BLACK.filled())))
+            //         .unwrap();
+            //
+            //     root.draw_text(
+            //         &txt,
+            //         &text_font,
+            //         ((cnt + s * k) as i32, (cnt - c * k) as i32),
+            //     )
+            //     .unwrap();
+            // }
+        }
+
+        // chart
+        //     .draw_series(LineSeries::new(
+        //         ((-US * 10)..=(US * 10)).map(|u| {
+        //             let u = u as f64 / 20.;
+        //             let (s, c) = fresnl(u);
+        //             (c, s)
+        //         }),
+        //         &BLUE,
+        //     ))
+        //     .unwrap();
+
+        let (s, c) = fresnl(u1);
+
+        let p1 = (c, s);
+
+        let (s, c) = fresnl(u2);
+
+        let p2 = (c, s);
+        root.present().unwrap();
+        [p1, p2]
+    }
+
+    fn dn_button(&mut self, ui: &mut Ui) {
+        let name = if self.dn { "Корню" } else { "ДН" };
+
+        if ui.button(name).clicked() {
+            self.dn = !self.dn;
+        }
+    }
 
     #[inline]
     fn k(&self) -> f64 {
@@ -234,7 +367,13 @@ impl eframe::App for DocApp {
                         let h = ui.available_height();
                         let size = Vec2::splat(h);
                         let inner_ui = &mut alloc_ui_block(ui, size);
-                        self.draw_karnu(inner_ui, self.u1, self.u2)
+                        let points = if self.dn{
+                            self.draw_dn(inner_ui, self.u1, self.u2)
+                        }else {
+                            self.draw_karnu(inner_ui, self.u1, self.u2)
+                        };
+                        self.dn_button(inner_ui);
+                        points
                     }).inner;
 
                 ui.vertical(|ui| {
@@ -386,6 +525,7 @@ impl Default for DocApp {
             lambda: 3.,
             #[cfg(debug_assertions)]
             p: 10,
+            dn: true,
         }
     }
 }

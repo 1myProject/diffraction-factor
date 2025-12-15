@@ -398,6 +398,7 @@ impl MainApp {
 
         #[cfg(debug_assertions)]
         {
+            // if false then background is invisible
             let resp = if self.zoom {
                 ui.selectable_label(true, "zoom")
             } else {
