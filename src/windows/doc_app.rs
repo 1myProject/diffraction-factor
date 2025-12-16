@@ -210,7 +210,7 @@ impl DocApp {
                 .unwrap();
         }
 
-        const AXIS: f64 = 1.3;
+        const AXIS: f64 = 1.15;
         let axis = (-AXIS..AXIS).step(1.);
         let mut chart = ChartBuilder::on(&root)
             .build_cartesian_2d(axis.clone(), axis)
@@ -265,8 +265,9 @@ impl DocApp {
             .unwrap();
 
             root.draw_text("0", &text_font, (center + 4, 0)).unwrap();
-            root.draw_text("90", &text_font, (2 * center - 20, center+2)).unwrap();
-            root.draw_text("-90", &text_font, (2, center+2)).unwrap();
+            root.draw_text("90", &text_font, (2 * center - 20, center + 2))
+                .unwrap();
+            root.draw_text("-90", &text_font, (2, center + 2)).unwrap();
 
             // let cnt = center as f64;
             // let k = cnt / 0.8;
@@ -296,6 +297,30 @@ impl DocApp {
             // }
         }
 
+        let mut max = 0.;
+        let kk = 2. * std::f64::consts::PI * (u1+u2) / self.lambda;
+        let ll = self.l1 * self.l2;
+        const A:i32 = 180;
+        let line = ((360-A)..=(360+A))
+            .map(move |a| a as f64 * std::f64::consts::PI / 180.)
+            .map(|rad| {
+                let r = (kk * rad.sin()).sin() / (ll * kk * rad.sin());
+                if r > max {
+                    max = r;
+                }
+                (r, rad)
+            })
+            .collect::<Vec<(f64, f64)>>();
+
+        chart
+            .draw_series(LineSeries::new(
+                line.into_iter().map(|(r, rad)| {
+                    let r = r / max;
+                    (r * rad.sin(), r * rad.cos())
+                }),
+                &RED,
+            ))
+            .unwrap();
         // chart
         //     .draw_series(LineSeries::new(
         //         ((-US * 10)..=(US * 10)).map(|u| {
@@ -346,20 +371,13 @@ impl eframe::App for DocApp {
                 let points =
                     ui.with_layout(egui::Layout::bottom_up(Align::LEFT), |ui| {
                         ui.horizontal(|ui| {
-                            ui.label("l1");
-                            let r = ui.add(DragValue::new(&mut self.l1).suffix("см").speed(0.05));
-                            if r.changed() {
-                                self.update_u();
-                            }
-                            ui.label("l2:");
-                            let r = ui.add(DragValue::new(&mut self.l2).suffix("см").speed(0.05));
-                            if r.changed() {
-                                self.update_u();
-                            }
 
-                            ui.label("λ:");
-                            let r = ui.add(DragValue::new(&mut self.lambda).suffix("см").speed(0.05));
-                            if r.changed() {
+                            let chng =
+                                valeu(ui, "l1:", &mut self.l1)
+                                || valeu(ui, "l2:", &mut self.l2)
+                                || valeu(ui, "λ:", &mut self.lambda);
+
+                            if chng {
                                 self.update_u();
                             }
                         });
@@ -528,4 +546,13 @@ impl Default for DocApp {
             dn: true,
         }
     }
+}
+
+fn valeu(ui: &mut Ui, txt: &str, val: &mut f64) -> bool {
+    ui.label(txt);
+    let r = ui.add(DragValue::new(val).suffix("см").speed(0.05));
+    if *val < 0. {
+        *val = 0.;
+    }
+    r.changed()
 }
