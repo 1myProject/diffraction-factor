@@ -1,5 +1,6 @@
 use std::f32::consts::FRAC_PI_4;
 
+// parameters for 3D plot 
 pub struct ChartParams {
     pub pitch: f32,
     pub yaw: f32,

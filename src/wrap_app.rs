@@ -6,6 +6,7 @@ use egui::{Ui, UiBuilder, ViewportCommand, Visuals};
 use std::time::{Duration, Instant};
 use crate::windows::settings::SettingsApp;
 
+/// mark for current window
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
 pub enum Anchor {
     #[default]
@@ -14,22 +15,8 @@ pub enum Anchor {
     Setting,
 }
 
-impl std::fmt::Display for Anchor {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut name = format!("{self:?}");
-        name.make_ascii_lowercase();
-        f.write_str(&name)
-    }
-}
-
-impl From<Anchor> for egui::WidgetText {
-    fn from(value: Anchor) -> Self {
-        Self::from(value.to_string())
-    }
-}
-
 // ----------------------------------------------------------------------------
-
+/// exemplars of inner windows
 #[derive(Default)]
 pub struct State {
     main: MainApp,
@@ -39,10 +26,12 @@ pub struct State {
     selected_anchor: Anchor,
 }
 
+///main window
 #[derive(Default)]
 pub struct WrapApp {
     pub state: State,
 
+    // for time of update frame
     #[cfg(debug_assertions)]
     last_time_run: Duration,
 
@@ -51,11 +40,13 @@ pub struct WrapApp {
 }
 
 impl WrapApp {
+    /// init function
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
-        egui_extras::install_image_loaders(&cc.egui_ctx);
+        egui_extras::install_image_loaders(&cc.egui_ctx); // for svg images
         Default::default()
     }
 
+    /// function for list to top bar
     pub fn apps_iter_mut(
         &mut self,
     ) -> impl Iterator<Item = (&'static str, Anchor, &mut dyn eframe::App)> {
@@ -82,27 +73,32 @@ impl WrapApp {
 }
 
 impl eframe::App for WrapApp {
+    /// drawing of window
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         #[cfg(debug_assertions)]
-        let st = Instant::now();
+        let st = Instant::now(); // start drawing
 
         let panel_frame = egui::Frame::new()
             .fill(ctx.style().visuals.window_fill())
             .inner_margin(4);
 
+        // for top window
         egui::TopBottomPanel::top("wrap_app_top_bar")
             .frame(panel_frame)
             .show(ctx, |ui| {
                 let app_rect = ui.max_rect();
 
+                // alloc a size of top window
                 let title_bar_height = 32.0;
                 let title_bar_rect = {
                     let mut rect = app_rect;
                     rect.max.y = rect.min.y + title_bar_height;
                     rect
                 };
+                // draw a top window
                 title_bar_ui(ui, title_bar_rect, "Дифракция");
 
+                // draw a top list of windows buttons
                 ui.horizontal_wrapped(|ui| {
                     ui.visuals_mut().button_frame = true;
                     self.bar_contents(ui);
@@ -110,9 +106,8 @@ impl eframe::App for WrapApp {
             });
 
         self.show_selected_app(ctx, frame);
-        
 
-
+        // end of drawing
         #[cfg(debug_assertions)]
         {
             self.last_time_run = st.elapsed();
@@ -120,6 +115,7 @@ impl eframe::App for WrapApp {
         }
     }
 
+    //from egui demo. I don't know what it do
     fn clear_color(&self, visuals: &Visuals) -> [f32; 4] {
         // Give the area behind the floating windows a different color, because it looks better:
         let color = egui::lerp(
@@ -142,6 +138,7 @@ impl WrapApp {
     }
 
     fn bar_contents(&mut self, ui: &mut Ui) {
+        // theme button
         egui::widgets::global_theme_preference_switch(ui);
 
         ui.separator();
@@ -157,6 +154,7 @@ impl WrapApp {
         }
         self.state.selected_anchor = selected_anchor;
 
+        // view debag info
         #[cfg(debug_assertions)]
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             egui::warn_if_debug_build(ui);
@@ -168,6 +166,7 @@ impl WrapApp {
     }
 }
 
+/// it for main_app. There are alloc rect blocks for plots
 pub fn alloc_ui_block(ui: &mut Ui, size: Vec2) -> Ui {
     let (rect, _response) = ui.allocate_exact_size(size, egui::Sense::hover());
     ui.new_child(
@@ -182,6 +181,7 @@ fn title_bar_ui(ui: &mut Ui, title_bar_rect: eframe::epaint::Rect, title: &str) 
 
     let painter = ui.painter();
 
+    // for can move a window
     let title_bar_response = ui.interact(
         title_bar_rect,
         Id::new("title_bar"),
@@ -223,6 +223,7 @@ fn title_bar_ui(ui: &mut Ui, title_bar_rect: eframe::epaint::Rect, title: &str) 
 
             let button_height = 20.0;
 
+            // crutch. it from egui demo
             let close_response = ui.add(Button::new(RichText::new("❌").size(button_height)));
             if close_response.clicked() {
                 ui.ctx().send_viewport_cmd(ViewportCommand::Close);

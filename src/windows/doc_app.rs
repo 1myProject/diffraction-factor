@@ -198,7 +198,6 @@ impl DocApp {
     fn draw_dn(&mut self, ui: &Ui, u1: f64, u2: f64) -> [(f64, f64); 2] {
         let size = ui.available_height();
         let center = (size / 2.) as i32;
-        let k_axis = center as f32 / 8.;
 
         let root = EguiBackend::new(ui).into_drawing_area();
 
@@ -409,24 +408,6 @@ impl eframe::App for DocApp {
                             self.update_u();
                         }
 
-                        // let drg = DragValue::new(&mut self.l1).suffix("см").speed(0.05);
-                        // let ch = add_param(ui, "l1:", drg);
-                        // if ch {
-                        //     self.update_u();
-                        // }
-                        //
-                        // let drg = DragValue::new(&mut self.l2).suffix("см").speed(0.05);
-                        // let ch = add_param(ui, "l2:", drg);
-                        // if ch {
-                        //     self.update_u();
-                        // }
-                        //
-                        // let drg = DragValue::new(&mut self.lambda).suffix("см").speed(0.05);
-                        // let ch = add_param(ui, "λ: ", drg);
-                        // if ch {
-                        //     self.update_u();
-                        // }
-
                         let drg = DragValue::new(&mut self.u1).speed(0.05);
                         let ch = add_param(ui, "u1:", drg);
                         if ch {
@@ -543,7 +524,7 @@ impl Default for DocApp {
             lambda: 3.,
             #[cfg(debug_assertions)]
             p: 10,
-            dn: true,
+            dn: false,
         }
     }
 }

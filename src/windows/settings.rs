@@ -1,8 +1,12 @@
 use egui::special_emojis::GITHUB;
 use egui::Vec2;
 
+///settings window (size of window & scale of elements)
+
+
+/// hight of window
 #[derive(Default, PartialEq)]
-enum SizeType {
+enum SizeType { 
     #[default]
     H800,
     H1080,
@@ -23,6 +27,7 @@ impl SizeType {
     }
 }
 
+/// scales of pixels 
 #[derive(Default, PartialEq)]
 enum ScaleType{
     #[default]
@@ -46,8 +51,6 @@ impl ScaleType {
 pub struct SettingsApp {
     size_type: SizeType,
     scale_type: ScaleType,
-
-    lock: bool
 }
 
 impl eframe::App for SettingsApp {
@@ -72,15 +75,19 @@ impl eframe::App for SettingsApp {
                 })
             });
 
+            //updater os settings
+            
             let sc = self.scale_type.get_dpi();
 
             // print!("\r{}", ctx.pixels_per_point());
-            ctx.set_pixels_per_point(sc);
+            ctx.set_pixels_per_point(sc); // set scale of pixels
 
-            let y = self.size_type.get_hight()/sc;
+            let y = self.size_type.get_hight()/sc; // set hight for new scale
 
             ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(compute_window_size(y)));
+            
             // info block
+            
             ui.separator();
             ui.heading("Информация");
 
@@ -114,12 +121,13 @@ impl eframe::App for SettingsApp {
     }
 }
 
-
+// count of blocks for height (rows) and width (cols)
 pub const COLS: f32 = 10.;
 pub const ROWS: f32 = 6.;
 
+// the top title bar is also part of the window
 pub const OFFEST_Y: f32 = 77.;
-pub const OFFEST_X: f32 = 16.;
+pub const OFFEST_X: f32 = 16.; // I don't know why but it needed
 
 pub const MAIN_HEIGHT: f32 = 600.;
 pub fn compute_window_size(hight: f32) -> Vec2 {

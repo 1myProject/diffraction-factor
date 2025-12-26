@@ -109,7 +109,6 @@ impl MainApp {
 impl MainApp {
     fn draw_3d(&mut self, ui: &mut Ui, line: Vec<(f64, f64, f64)>) {
         let available = ui.available_size();
-        // let (_rect, response) = ui.allocate_exact_size(available, egui::Sense::hover());
 
         {
             let center = available.x / 2.;
@@ -257,6 +256,7 @@ impl MainApp {
                 pb.into_matrix()
             });
 
+            // setting of mesh
             chart
                 .configure_axes()
                 .light_grid_style(if ui.visuals().dark_mode {
@@ -288,6 +288,7 @@ impl MainApp {
                 }
             };
 
+            // draw red point
             chart
                 .draw_series(
                     points
@@ -296,6 +297,8 @@ impl MainApp {
                 )
                 .unwrap();
 
+            // draw projection on the plot
+            // I don't know who of whose
             {
                 const POINT_PROJECTION_SIZE: i32 = 3;
 
@@ -365,7 +368,7 @@ impl MainApp {
 
                 let phi = phi - FRAC_PI_2;
                 if phi != 0. && phi != 3.14 {
-                    let p = - if phi > 0. && phi < PI { 1. } else { -1. };
+                    let p = -if phi > 0. && phi < PI { 1. } else { -1. };
 
                     let l = line.iter().map(|&(x, y, _)| (x, y, p));
                     chart
@@ -389,6 +392,7 @@ impl MainApp {
                 }
             }
 
+            // main line function
             chart
                 .draw_series(LineSeries::new(line.clone(), COLOR_LINE))
                 .unwrap();
@@ -396,6 +400,7 @@ impl MainApp {
             root.present().unwrap();
         }
 
+        // experimental
         #[cfg(debug_assertions)]
         {
             // if false then background is invisible
@@ -457,7 +462,7 @@ impl MainApp {
                         .suffix("см")
                         .speed(0.1),
                 )
-                    .on_hover_text("расстояние от центра окна до кромки экрана");
+                .on_hover_text("расстояние от центра окна до кромки экрана");
             });
 
             // frequency/len of vawe
@@ -513,6 +518,7 @@ impl MainApp {
                 .speed(0.1);
             add_param(ui, "|| ~ 📢     L2:", drag);
 
+            // helper
             #[cfg(debug_assertions)]
             {
                 let drag = DragValue::new(&mut self.p).range(0.1..=50.).speed(0.1);
@@ -541,6 +547,7 @@ impl MainApp {
 
         let root_k = center / MAX_X;
 
+        // if screen is close
         if self.fz.get_start() == self.fz.x_otv {
             root.fill(&BLACK).unwrap();
             return;
@@ -550,6 +557,7 @@ impl MainApp {
             root.fill(&BLACK).unwrap();
         }
 
+        // radius of waves
         let waves = self
             .fz
             .get_fresnel_zones(self.screen_mod == ScreenMod::Circle)
@@ -570,6 +578,7 @@ impl MainApp {
             .unwrap();
             last_r = r;
         }
+        // its wave too
         root.draw(&Circle::new(
             center_of_circle,
             last_r * root_k,
@@ -577,6 +586,7 @@ impl MainApp {
         ))
         .unwrap();
 
+        // draw screen
         match self.fz.rezhim {
             Screens::One => {
                 if self.screen_mod == ScreenMod::Rectangle {
@@ -619,12 +629,14 @@ impl MainApp {
         red_point: [f64; 2],
         stud_points: Option<Vec<(f64, f64)>>,
     ) {
+        // name of y axis
         let nm = match stud_points {
             Some(_) => "|F|",
             None => "φ",
         };
 
         let k = self.fz.k();
+        // mess when hover on plot near mouse
         let label_fmt = |_s: &str, val: &PlotPoint| {
             format!("u:  {:.3}\nx:  {:.3}\n{nm}: {:.3}", val.x, val.x / k, val.y)
         };
@@ -647,6 +659,7 @@ impl MainApp {
         };
         let rect = Rect::from_min_size(Pos2::new(x, sz.x), sz);
 
+        // function for zooming
         let scroll = ui.input(|i| {
             if let Some(mut position) = i.pointer.latest_pos() {
                 position.y -= OFFEST_Y;
@@ -698,13 +711,13 @@ impl MainApp {
                     .radius(5.)
                     .shape(MarkerShape::Circle)
                     .color(COLOR_RED_POINT_EGUI);
-                plot_ui.points(points);
+                plot_ui.points(points); // current point
 
-                if let Some(points) = stud_points {
+                if let Some(points) = stud_points && *self.fz.get_max_i() != 0.{
                     let points_cross = points
                         .iter()
-                        .filter_map(|(x, i)| {
-                            if *x == 0. && *i == 0. {
+                        .filter_map(|&(x, i)| {
+                            if x == 0. && i == 0. {
                                 return None;
                             }
                             let u = x * self.fz.k();
@@ -715,7 +728,7 @@ impl MainApp {
                         .radius(5.)
                         .shape(MarkerShape::Cross)
                         .color(Color32::RED);
-                    plot_ui.points(tmp);
+                    plot_ui.points(tmp); // math point
 
                     let line = points
                         .into_iter()
@@ -728,7 +741,7 @@ impl MainApp {
                         })
                         .collect::<Vec<_>>();
 
-                    plot_ui.line(Line::new("I/Imax", line).color(Color32::ORANGE));
+                    plot_ui.line(Line::new("I/Imax", line).color(Color32::ORANGE)); // students points
                 }
             })
             .response;
@@ -737,18 +750,19 @@ impl MainApp {
     fn table_ui(&mut self, ui: &mut Ui) {
         use egui_extras::{Column, TableBuilder};
         ui.vertical(|ui| {
+            //over table
             let drag = DragValue::new(self.fz.get_max_i()).suffix("мА").speed(0.1);
             add_param(ui, "I без экранов:", drag);
 
             ui.separator();
 
             let available_height = ui.available_height();
-            let mut table = TableBuilder::new(ui)
+            let mut table = TableBuilder::new(ui) //table sittings
                 .striped(true)
-                .resizable(false)
-                .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
-                .column(Column::auto())
-                .column(Column::remainder())
+                .resizable(false) // disable resizable
+                .cell_layout(egui::Layout::left_to_right(egui::Align::Center)) // place on center
+                .column(Column::auto()) // auto size of column
+                .column(Column::remainder()) // max size of column
                 .column(Column::auto())
                 .column(Column::remainder())
                 .min_scrolled_height(0.0)
@@ -757,7 +771,7 @@ impl MainApp {
             table = table.sense(egui::Sense::click());
 
             table
-                .header(20.0, |mut header| {
+                .header(20.0, |mut header| { // header columns
                     header.col(|ui| {
                         ui.strong("x (см)");
                     });
@@ -771,34 +785,35 @@ impl MainApp {
                         ui.strong("|F|");
                     });
                 })
-                .body(|mut body| {
+                .body(|mut body| { // main columns
                     let k = self.fz.k();
-                    let mut edited1 = false;
+                    let mut edited1 = false; // flag for sort student points
                     {
                         let mut points = self.fz.get_student_points();
 
-                        if let Some((x, i)) = points.last() {
-                            if (*x != 0. || *i != 0.) && points.len() < 50 {
+                        if let Some(&(x, i)) = points.last() {
+                            if (x != 0. || i != 0.) && points.len() < 50 { // create new point if last is not 0,0
                                 points.push((0., 0.));
                             }
-                        } else {
+                        } else { //create if students points is empty
                             points.push((0., 0.));
                         }
                         if let Some(i) = points.iter().position(|&point| point == (0., 0.)) {
-                            if i < points.len() - 1 {
+                            if i < points.len() - 1 { // del the 0,0 point if it not last
                                 points.remove(i);
                             }
                         }
 
+                        // draw main table
                         for (row_index, (x, i)) in points.iter_mut().enumerate() {
                             body.row(18., |mut row| {
-                                row.set_overline((row_index) % 5 == 0);
+                                row.set_overline((row_index) % 5 == 0); // separator for every 5
 
                                 const ZERS: f64 = 1000.;
                                 let u = ((k * *x) * ZERS).round() / ZERS;
                                 //x
                                 row.col(|ui| {
-                                    let tmp = cell_input(ui, x);
+                                    let tmp = cell_input(ui, x); // draw cell for input
                                     if tmp && !edited1 {
                                         edited1 = true;
                                     }
@@ -822,7 +837,7 @@ impl MainApp {
                                 });
                             });
                         }
-                        if edited1 {
+                        if edited1 { // sorting
                             points.sort_by(|(x1, _), (x2, _)| x1.total_cmp(x2));
                         }
                     }
@@ -836,6 +851,7 @@ impl eframe::App for MainApp {
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.with_layout(egui::Layout::left_to_right(egui::Align::LEFT), |ui| {
                 ui.with_layout(egui::Layout::top_down(egui::Align::TOP), |ui| {
+
                     let available = ui.available_size();
                     ui.with_layout(egui::Layout::left_to_right(egui::Align::LEFT), |ui| {
                         // Drow 3d plot
@@ -876,6 +892,7 @@ impl eframe::App for MainApp {
                     });
                 });
 
+                //draw table with students points
                 ui.separator();
                 let body_text_size = egui::TextStyle::Body.resolve(ui.style()).size;
                 use egui_extras::{Size, StripBuilder};
@@ -884,9 +901,9 @@ impl eframe::App for MainApp {
                     .size(Size::exact(body_text_size)) // for the source code link
                     .vertical(|mut strip| {
                         strip.cell(|ui| {
-                            egui::ScrollArea::horizontal().show(ui, |ui| {
-                                self.table_ui(ui);
-                            });
+                            self.table_ui(ui);
+                            // egui::ScrollArea::horizontal().show(ui, |ui| {
+                            // });
                         });
                     });
             });
@@ -922,6 +939,7 @@ fn cell_input(ui: &mut Ui, v: &mut f64) -> bool {
     resp.changed()
 }
 
+// old code
 impl MainApp {
     // fn draw_bottom_plot(
     //     &mut self,

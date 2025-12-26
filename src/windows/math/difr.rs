@@ -12,29 +12,32 @@ pub enum Screens {
 }
 
 pub struct Difr {
-    pub x_otv: f32,
-    pub l1: f32,
+    pub x_otv: f32, // len between screen center and screen edge
+    pub l1: f32, // len between rupr and screen
     pub l2: f32,
     pub lambda: f32,
     pub freq: f32,
     pub rezhim: Screens,
 
-    pub difs: Vec<DifrPoint>,
-    pub difs_3d: Vec<(f64, f64, f64)>,
+    pub difs: Vec<DifrPoint>, // for abs and angle
+    pub difs_3d: Vec<(f64, f64, f64)>, // for 3D
 
+    // copies of values to track changes
     x_otv_c: f32,
     l1_c: f32,
     l2_c: f32,
     lambda_c: f32,
 
-    // pub(crate) max_abs: f64,
+    // students point for 1 and 2 screens
     student_points_1: RefCell<Vec<(f64, f64)>>,
     student_points_2: RefCell<Vec<(f64, f64)>>,
+    // hear max I
     max_i_1: f64,
     max_i_2: f64,
 }
 
 impl Difr {
+    // recalculate of diffractor-factor
     #[inline]
     pub fn rebuild_integrals(&mut self) {
         const STEP: f64 = 40. / 1000.;
@@ -90,6 +93,7 @@ impl Difr {
             .collect();
     }
 
+    // get left point of size screen
     #[inline]
     pub fn get_start(&self) -> f32 {
         match self.rezhim {
@@ -98,6 +102,7 @@ impl Difr {
         }
     }
 
+    // calculate radiuses of fresnels  zones
     #[inline]
     pub fn get_fresnel_zones(&self, is_circle: bool) -> Vec<f32> {
         let b = self.b();
@@ -125,6 +130,7 @@ impl Difr {
         ret
     }
 
+    // checking if change
     #[inline]
     pub fn is_cheng(&self) -> bool {
         self.x_otv != self.x_otv_c
@@ -133,11 +139,13 @@ impl Difr {
             || self.lambda != self.lambda_c
     }
 
+    // blockerator for max vawes for fresnels zones
     #[inline]
     pub fn not_sale_cpu_usage(&self) -> bool {
         self.b() > 6.
     }
 
+    // update copies values
     #[inline]
     pub fn cheng_copes(&mut self) {
         self.x_otv_c = self.x_otv;
@@ -146,6 +154,7 @@ impl Difr {
         self.lambda_c = self.lambda;
     }
 
+    // return last values
     #[inline]
     pub fn backup_copes(&mut self) {
         self.x_otv = self.x_otv_c;
@@ -154,6 +163,7 @@ impl Difr {
         self.lambda = self.lambda_c;
     }
 
+    // for 3D plot in 1 screen mode
     #[inline]
     pub fn get_current_point_3d(&self) -> (f64, f64, f64) {
         let u = self.cur_u();
@@ -162,6 +172,7 @@ impl Difr {
         (u, c, s)
     }
 
+    // for 3D plot in 2 screens mode
     #[inline]
     pub fn get_current_points_3d(&self) -> ((f64, f64, f64), (f64, f64, f64)) {
         let u = self.cur_u();
@@ -170,12 +181,14 @@ impl Difr {
         ((u, c, s), (-u, -c, -s))
     }
 
+    // for abs plot
     #[inline]
     pub fn get_current_point_norm(&self) -> [f64; 2] {
         let u = self.cur_u();
         self.get_point_norm(u)
     }
 
+    // for red point on abs plot
     #[inline]
     pub fn get_point_norm(&self, u: f64) -> [f64; 2] {
         match self.rezhim {
@@ -190,6 +203,7 @@ impl Difr {
         }
     }
 
+    // for red point on angel plot
     #[inline]
     pub fn get_current_point_arg(&self) -> [f64; 2] {
         let u = self.cur_u();
@@ -205,16 +219,19 @@ impl Difr {
         }
     }
 
+    // wavenumber
     #[inline]
     pub fn k(&self) -> f64 {
         (2. * (self.l1 + self.l2) / (self.lambda * self.l1 * self.l2)).sqrt() as f64
     }
 
+    // coefficient for fresnels zones
     #[inline]
     fn b(&self) -> f32 {
         (self.lambda * self.l1 * self.l2) / (self.l1 + self.l2)
     }
 
+    // come on it's obvious
     #[inline]
     fn cur_u(&self) -> f64 {
         self.k() * self.x_otv as f64
