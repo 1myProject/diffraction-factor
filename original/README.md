@@ -1,5 +1,5 @@
 ## Оригинальная программа написаная для MathLab
-![screenshot](screenshot.png)
+![screenshot](Screenshot.png)
 главная функция для запуска
 ```Matlab
 difr
