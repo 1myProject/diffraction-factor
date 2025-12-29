@@ -747,6 +747,7 @@ impl MainApp {
             .response;
     }
 
+    // TODO: добавить кнопку копирования всей таблицы в буфер
     fn table_ui(&mut self, ui: &mut Ui) {
         use egui_extras::{Column, TableBuilder};
         ui.vertical(|ui| {
@@ -846,6 +847,7 @@ impl MainApp {
     }
 }
 
+// TODO: добавить демку
 impl eframe::App for MainApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {

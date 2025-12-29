@@ -342,6 +342,7 @@ impl DocApp {
         [p1, p2]
     }
 
+    #[cfg(debug_assertions)]
     fn dn_button(&mut self, ui: &mut Ui) {
         let name = if self.dn { "Корню" } else { "ДН" };
 
@@ -369,18 +370,7 @@ impl eframe::App for DocApp {
             ui.with_layout(egui::Layout::left_to_right(Align::LEFT), |ui| {
                 let points =
                     ui.with_layout(egui::Layout::bottom_up(Align::LEFT), |ui| {
-                        ui.horizontal(|ui| {
-
-                            let chng =
-                                valeu(ui, "l1:", &mut self.l1)
-                                || valeu(ui, "l2:", &mut self.l2)
-                                || valeu(ui, "λ:", &mut self.lambda);
-
-                            if chng {
-                                self.update_u();
-                            }
-                        });
-
+                        // drawing spiral or directional diagram
                         let h = ui.available_height();
                         let size = Vec2::splat(h);
                         let inner_ui = &mut alloc_ui_block(ui, size);
@@ -389,6 +379,7 @@ impl eframe::App for DocApp {
                         }else {
                             self.draw_karnu(inner_ui, self.u1, self.u2)
                         };
+                        #[cfg(debug_assertions)]
                         self.dn_button(inner_ui);
                         points
                     }).inner;
@@ -396,31 +387,52 @@ impl eframe::App for DocApp {
                 ui.vertical(|ui| {
                     {
                         ui.heading("В качестве аргумента, для U и X, так же можно вписать \"inf\" и \"-inf\"");
-                        let drg = DragValue::new(&mut self.x1).suffix("см").speed(0.05);
-                        let ch = add_param(ui, "x1: ", drg);
-                        if ch {
-                            self.update_u();
-                        }
+                        ui.horizontal(|ui| {
 
-                        let drg = DragValue::new(&mut self.x2).suffix("см").speed(0.05);
-                        let ch = add_param(ui, "x2: ", drg);
-                        if ch {
-                            self.update_u();
-                        }
+                            let chng =
+                                valeu(ui, "l1:", &mut self.l1)
+                                    || valeu(ui, "l2:", &mut self.l2)
+                                    || valeu(ui, "λ:", &mut self.lambda);
 
-                        let drg = DragValue::new(&mut self.u1).speed(0.05);
-                        let ch = add_param(ui, "u1:", drg);
-                        if ch {
-                            self.x1 = self.u1 / self.k();
-                        }
-                        let drg = DragValue::new(&mut self.u2).speed(0.05);
-                        let ch = add_param(ui, "u2:", drg);
-                        if ch {
-                            self.x2 = self.u2 / self.k();
-                        }
+                            if chng {
+                                self.update_u();
+                            }
+                        });
+                        // mini table
+                        egui::Grid::new("xu")
+                            .num_columns(2)
+                            .striped(true)
+                            .show(ui, |ui|{
+                                let drg = DragValue::new(&mut self.x1).suffix("см").speed(0.05);
+                                let ch = add_param(ui, "x1: ", drg); // column 1 row 1
+                                if ch {
+                                    self.update_u();
+                                }
+
+                                let drg = DragValue::new(&mut self.x2).suffix("см").speed(0.05);
+                                let ch = add_param(ui, "x2: ", drg); // column 2 row 1
+                                if ch {
+                                    self.update_u();
+                                }
+
+                                ui.end_row(); // next row
+
+                                let drg = DragValue::new(&mut self.u1).speed(0.05);
+                                let ch = add_param(ui, "u1:", drg); // column 1 row 2
+                                if ch {
+                                    self.x1 = self.u1 / self.k(); // update x
+                                }
+
+                                let drg = DragValue::new(&mut self.u2).speed(0.05);
+                                let ch = add_param(ui, "u2:", drg); // column 2 row 2
+                                if ch {
+                                    self.x2 = self.u2 / self.k();
+                                }
+                        });
 
                         ui.separator();
 
+                        // viewing C, S and |F|
                         for (i, (c, s)) in points.iter().enumerate() {
                             let plus = if *s < 0. {
                                 ""
@@ -435,6 +447,7 @@ impl eframe::App for DocApp {
                         let s = (points[0].1 - points[1].1).abs();
                         ui.heading(format!("|F|={:.3}", c.hypot(s)));
 
+                        // helper parameter
                         #[cfg(debug_assertions)]
                         {
                             let drag = DragValue::new(&mut self.p);
@@ -444,6 +457,7 @@ impl eframe::App for DocApp {
 
                     ui.separator();
 
+                    // manual block
                     egui::ScrollArea::both().show(ui, |ui| {
                         ui.horizontal_wrapped(|ui| {
                             let mut job = LayoutJob::default();
