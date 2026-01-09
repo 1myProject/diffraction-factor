@@ -3,7 +3,7 @@ use crate::windows::math::chart::ChartParams;
 use crate::windows::math::difr::{Difr, Screens, MAX_X};
 use crate::windows::settings::{COLS, OFFEST_X, OFFEST_Y, ROWS};
 use crate::wrap_app::alloc_ui_block;
-use egui::{Button, Color32, DragValue, Event, Image, Pos2, Rect, Ui, Vec2};
+use egui::{Button, Color32, DragValue, Event, Id, Image, Modal, Pos2, Rect, Ui, Vec2};
 use egui_plot::{AxisHints, GridInput, GridMark, Line, MarkerShape, Plot, PlotPoint, Points};
 use egui_plotter::EguiBackend;
 use plotters::prelude::*;
@@ -37,6 +37,8 @@ pub struct MainApp {
 
     fz: Difr,
     is_freq: bool,
+    alert_of_copy_table: bool,
+    #[cfg(debug_assertions)]
     zoom: bool,
     screen_mod: ScreenMod,
 
@@ -747,13 +749,45 @@ impl MainApp {
             .response;
     }
 
-    // TODO: добавить кнопку копирования всей таблицы в буфер
     fn table_ui(&mut self, ui: &mut Ui) {
         use egui_extras::{Column, TableBuilder};
         ui.vertical(|ui| {
             //over table
             let drag = DragValue::new(self.fz.get_max_i()).suffix("мА").speed(0.1);
             add_param(ui, "I без экранов:", drag);
+
+            let k = self.fz.k();
+
+            if ui.button("скопировать таблицу").clicked() {
+                let lambda = self.fz.lambda;
+                let l1 = self.fz.l1;
+                let l2 = self.fz.l2;
+                let max_i = *self.fz.get_max_i();
+                let mode = match self.fz.rezhim {
+                    Screens::One => "Один экран",
+                    Screens::Two => "Два экрана",
+                };
+
+                // parameters
+                let mut txt = format!(
+                    "{mode}\nДлинна волны\t{lambda:.2}\nl1 от рупора до экрана\t{l1:.2}\nl2 от экрана до рупора\t{l2:.2}\nk\t{k:.2}\nI без экранов:\t{max_i:.2}\n"
+                );
+                // header of table
+                txt += "x отв\tu\tI\tI/Imax\t|F|\n";
+
+                // body of table
+                for &(x, i) in self.fz.get_student_points().iter() {
+                    if (x, i) == (0.0, 0.0) {
+                        continue;
+                    }
+                    let u = k * x;
+
+                    let f = self.fz.get_point_norm(u)[1];
+                    txt += format!("{x:.1}\t{u:.3}\t{i:.2}\t{:.2}\t{f:.3}\n", i / max_i).as_str();
+                }
+                ui.ctx().copy_text(txt.replace(".", ","));
+                self.alert_of_copy_table = true;
+            }
 
             ui.separator();
 
@@ -911,12 +945,16 @@ impl eframe::App for MainApp {
             });
         });
 
-        // ctx.show_viewport_immediate(
-        //     egui::ViewportId("dop".into()),
-        //     egui::ViewportBuilder::default().with_title("color"),
-        //     |ctx, _class| egui::CentralPanel::default().show(ctx, |ui| {
-        //     }),
-        // );
+        if self.alert_of_copy_table {
+            let modal = Modal::new(Id::new("Info"))
+                .show(ctx, |ui| {
+                    ui.heading("Ваша таблица была скопирована в память компьютера. И её можно вставить в Excel или Гугл Таблицы")
+                });
+
+            if modal.should_close() {
+                self.alert_of_copy_table = false;
+            }
+        }
     }
 }
 
